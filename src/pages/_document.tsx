@@ -3,10 +3,24 @@ import { Html, Head, Main, NextScript } from "next/document";
 import { SEOElements } from "@/components/SEO";
 
 export default function Document() {
+  // Get AdSense client ID from environment
+  const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
+
   return (
     <Html lang="en">
       <Head>
         <SEOElements />
+        
+        {/* Google AdSense Script (only in production) */}
+        {adsenseClientId && process.env.NODE_ENV === "production" && (
+          <>
+            <script
+              async
+              src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
+              crossOrigin="anonymous"
+            />
+          </>
+        )}
         
         {/* PWA Meta Tags */}
         <meta name="application-name" content="Bible Quiz" />

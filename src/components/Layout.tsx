@@ -3,6 +3,7 @@ import { Home, Trophy, History, Settings, BookText, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { cn } from "@/lib/utils";
+import { BottomAdBanner } from "./AdBanner";
 
 interface LayoutProps {
   children: ReactNode;
@@ -22,7 +23,7 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-background pb-32">
-      <main className="container mx-auto px-4 py-6 max-w-4xl">
+      <main className="container mx-auto px-4 py-6 max-w-4xl flex-1 overflow-y-auto pb-20">
         {children}
       </main>
 
@@ -33,8 +34,11 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </div>
 
+      {/* Ad Banner - Above Navigation */}
+      <BottomAdBanner slot={process.env.NEXT_PUBLIC_AD_SLOT_BOTTOM} />
+
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border shadow-lg">
+      <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-lg z-50">
         <div className="overflow-x-auto">
           <div className="flex min-w-max">
             {navItems.map((item) => {
