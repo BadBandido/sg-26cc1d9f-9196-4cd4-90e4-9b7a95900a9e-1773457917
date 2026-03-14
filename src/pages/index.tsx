@@ -5,16 +5,16 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { SEO } from "@/components/SEO";
 
 export default function Home() {
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (user) {
       router.push("/dashboard");
     }
-  }, [isAuthenticated, router]);
+  }, [user, router]);
 
-  if (isAuthenticated) {
+  if (user) {
     return null;
   }
 

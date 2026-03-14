@@ -35,15 +35,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const applyTheme = (theme: string) => {
-    document.documentElement.className = "";
+    const root = document.documentElement;
+    // Remove existing theme classes
+    Array.from(root.classList).forEach(cls => {
+      if (cls.startsWith('theme-')) {
+        root.classList.remove(cls);
+      }
+    });
+    
     if (theme !== "navy-blue") {
-      document.documentElement.classList.add(`theme-${theme}`);
+      root.classList.add(`theme-${theme}`);
     }
   };
 
   const applyFontSize = (fontSize: string) => {
-    document.documentElement.classList.remove("font-size-small", "font-size-normal", "font-size-large");
-    document.documentElement.classList.add(`font-size-${fontSize}`);
+    const root = document.documentElement;
+    root.classList.remove("font-size-small", "font-size-normal", "font-size-large");
+    root.classList.add(`font-size-${fontSize}`);
   };
 
   const login = (email: string, password: string): boolean => {

@@ -67,7 +67,7 @@ export function SplashScreen() {
         localStorage.setItem("bible_quiz_users", JSON.stringify(existingUsers));
 
         // Auto-login after signup
-        await login(email, password, selectedCountry.name, selectedCountry.code);
+        login(email, password);
       } else {
         // Login mode
         const existingUsers = JSON.parse(localStorage.getItem("bible_quiz_users") || "[]");
@@ -79,7 +79,7 @@ export function SplashScreen() {
           return;
         }
 
-        await login(email, password, user.country, user.countryCode);
+        login(email, password);
       }
     } catch (error) {
       console.error("Authentication failed:", error);

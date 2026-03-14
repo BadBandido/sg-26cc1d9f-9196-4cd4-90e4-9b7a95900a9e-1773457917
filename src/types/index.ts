@@ -1,6 +1,7 @@
 export interface User {
   id: string;
   email: string;
+  password?: string;
   country: string;
   countryCode: string;
   createdAt: string;
@@ -74,7 +75,7 @@ export type ThemeColor =
 export type FontSize = "small" | "normal" | "large";
 
 export interface UserSettings {
-  userId: string;
+  userId?: string;
   theme: ThemeColor;
   fontSize: FontSize;
 }
