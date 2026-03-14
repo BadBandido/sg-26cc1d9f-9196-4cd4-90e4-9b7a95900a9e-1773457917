@@ -87,7 +87,7 @@ export function AdBanner({
       try {
         // @ts-expect-error - AdSense global object
         if (typeof window !== "undefined" && window.adsbygoogle) {
-          // @ts-expect-error
+          // @ts-expect-error - pushing to AdSense array
           (window.adsbygoogle = window.adsbygoogle || []).push({});
           setAdLoaded(true);
         }
