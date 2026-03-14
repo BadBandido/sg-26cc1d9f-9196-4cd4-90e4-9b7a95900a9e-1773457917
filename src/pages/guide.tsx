@@ -1,16 +1,27 @@
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/router";
-import { BookOpen, Clock, Trophy, Target, Award, PlayCircle } from "lucide-react";
+import { Clock, Trophy, Target, Award, PlayCircle } from "lucide-react";
 
 export default function GuidePage() {
   const { user } = useAuth();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
 
-  if (!user) {
-    router.push("/");
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !user) {
+      router.push("/");
+    }
+  }, [mounted, user, router]);
+
+  if (!mounted || !user) {
     return null;
   }
 
