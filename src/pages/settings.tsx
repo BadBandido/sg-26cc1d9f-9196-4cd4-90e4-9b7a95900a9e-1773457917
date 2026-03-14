@@ -16,8 +16,21 @@ import {
   requestNotificationPermission,
   sendTestNotification 
 } from "@/services/notificationService";
-import { Bell, BellOff, TestTube } from "lucide-react";
+import { Bell, BellOff, TestTube, Palette, Type, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { SEO } from "@/components/SEO";
+
+const themeOptions = [
+  { value: "navy", label: "Navy Blue & Gold" },
+  { value: "light", label: "Light Theme" },
+  { value: "dark", label: "Dark Theme" },
+];
+
+const fontSizeOptions = [
+  { value: "small", label: "Small" },
+  { value: "normal", label: "Normal" },
+  { value: "large", label: "Large" },
+];
 
 export default function Settings() {
   const { user, logout } = useAuth();
