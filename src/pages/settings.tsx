@@ -1,14 +1,10 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/router";
-import { Switch } from "@/components/ui/switch";
 import { 
   subscribeToPushNotifications, 
   unsubscribeFromPushNotifications, 
@@ -34,331 +30,293 @@ const fontSizeOptions = [
 
 export default function Settings() {
   const { user, logout } = useAuth();
-  const router = useRouter();
   const { toast } = useToast();
-  const [fontSize, setFontSize] = useState("normal");
-  const [theme, setTheme] = useState("navy");
-  const [adminUsername, setAdminUsername] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [settings, setSettings] = useState({
+    notifications: false,
+    sound: true,
+    theme: "navy",
+    fontSize: "normal",
+  });
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
-  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
 
   useEffect(() => {
-    if (!user) {
-      router.push("/");
-      return;
-    }
+    setMounted(true);
+  }, []);
 
-    // Load saved settings
-    const savedFontSize = localStorage.getItem("fontSize") || "normal";
-    const savedTheme = localStorage.getItem("theme") || "navy";
-    setFontSize(savedFontSize);
-    setTheme(savedTheme);
+  useEffect(() => {
+    if (!mounted || typeof window === "undefined") return;
 
-    // Apply theme
-    document.documentElement.setAttribute("data-theme", savedTheme);
+    const loadSettings = () => {
+      const savedSettings = localStorage.getItem("quizSettings");
+      if (savedSettings) {
+        setSettings(JSON.parse(savedSettings));
+      }
+    };
 
-    // Check notification status
+    const checkNotificationStatus = async () => {
+      if ("Notification" in window) {
+        setNotificationPermission(Notification.permission);
+        const subscribed = await isSubscribedToPushNotifications();
+        setIsSubscribed(subscribed);
+        setSettings(prev => ({ ...prev, notifications: subscribed }));
+      }
+    };
+
+    loadSettings();
     checkNotificationStatus();
-  }, [user, router]);
+  }, [mounted]);
 
-  const checkNotificationStatus = async () => {
-    if ("Notification" in window) {
-      setNotificationPermission(Notification.permission);
-      const subscribed = await isSubscribedToPushNotifications();
-      setNotificationsEnabled(subscribed);
-    }
-  };
-
-  const handleFontSizeChange = (value: string) => {
-    setFontSize(value);
-    localStorage.setItem("fontSize", value);
+  const handleSettingChange = (key: string, value: string | boolean) => {
+    const newSettings = { ...settings, [key]: value };
+    setSettings(newSettings);
+    localStorage.setItem("quizSettings", JSON.stringify(newSettings));
     
-    // Apply font size
-    const root = document.documentElement;
-    if (value === "small") {
-      root.style.fontSize = "14px";
-    } else if (value === "large") {
-      root.style.fontSize = "18px";
-    } else {
-      root.style.fontSize = "16px";
-    }
-
     toast({
-      title: "Font Size Updated",
-      description: `Font size changed to ${value}`,
+      title: "Settings Updated",
+      description: "Your preferences have been saved.",
     });
-  };
-
-  const handleThemeChange = (value: string) => {
-    setTheme(value);
-    localStorage.setItem("theme", value);
-    document.documentElement.setAttribute("data-theme", value);
-
-    toast({
-      title: "Theme Updated",
-      description: `Color theme changed to ${value}`,
-    });
-  };
-
-  const handleAdminLogin = () => {
-    if (adminUsername === "Lexiboy" && adminPassword === "KingDavid1971") {
-      router.push("/admin");
-    } else {
-      toast({
-        title: "Invalid Credentials",
-        description: "Incorrect username or password",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleNotificationToggle = async (enabled: boolean) => {
-    setLoadingNotifications(true);
-    
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to enable notifications.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubscribing(true);
+
     try {
       if (enabled) {
-        // Request permission first
         const permission = await requestNotificationPermission();
-        setNotificationPermission(permission);
-
-        if (permission === "granted") {
-          const subscription = await subscribeToPushNotifications();
-          if (subscription) {
-            setNotificationsEnabled(true);
-            toast({
-              title: "Notifications Enabled",
-              description: "You will now receive push notifications",
-            });
-          } else {
-            throw new Error("Failed to subscribe");
-          }
-        } else {
+        
+        if (permission !== "granted") {
           toast({
             title: "Permission Denied",
-            description: "Please enable notifications in your browser settings",
+            description: "Please enable notifications in your browser settings.",
             variant: "destructive",
           });
+          setIsSubscribing(false);
+          return;
         }
+
+        await subscribeToPushNotifications(user.id);
+        setIsSubscribed(true);
+        handleSettingChange("notifications", true);
+        
+        toast({
+          title: "Notifications Enabled",
+          description: "You will now receive push notifications.",
+        });
       } else {
-        const success = await unsubscribeFromPushNotifications();
-        if (success) {
-          setNotificationsEnabled(false);
-          toast({
-            title: "Notifications Disabled",
-            description: "You will no longer receive push notifications",
-          });
-        }
+        await unsubscribeFromPushNotifications(user.id);
+        setIsSubscribed(false);
+        handleSettingChange("notifications", false);
+        
+        toast({
+          title: "Notifications Disabled",
+          description: "You will no longer receive push notifications.",
+        });
       }
     } catch (error) {
       console.error("Error toggling notifications:", error);
       toast({
         title: "Error",
-        description: "Failed to update notification settings",
+        description: "Failed to update notification settings.",
         variant: "destructive",
       });
     } finally {
-      setLoadingNotifications(false);
+      setIsSubscribing(false);
     }
   };
 
-  const handleTestNotification = async () => {
+  const handleSendTestNotification = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to send test notifications.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isSubscribed) {
+      toast({
+        title: "Not Subscribed",
+        description: "Please enable notifications first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingTest(true);
+
     try {
-      await sendTestNotification();
+      await sendTestNotification(user.id);
+      
       toast({
         title: "Test Notification Sent",
-        description: "Check your notifications!",
+        description: "Check your device for the notification.",
       });
     } catch (error) {
       console.error("Error sending test notification:", error);
       toast({
         title: "Error",
-        description: "Failed to send test notification",
+        description: "Failed to send test notification.",
         variant: "destructive",
       });
+    } finally {
+      setIsSendingTest(false);
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push("/");
-  };
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <Layout>
-      <SEO title="Settings - Bible Quiz" />
+      <SEO 
+        title="Settings - The Ultimate Bible Quizzing Game"
+        description="Customize your Bible quiz experience with themes, notifications, and preferences."
+      />
       
-      <div className="space-y-6 animate-fade-in">
-        <div>
-          <h1 className="text-3xl font-bold font-serif mb-2">Settings</h1>
-          <p className="text-muted-foreground">Customize your quiz experience</p>
-        </div>
+      <div className="max-w-2xl mx-auto p-4">
+        <h1 className="text-3xl font-bold mb-6 text-navy-900 dark:text-white">Settings</h1>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Palette className="w-5 h-5" />
-              Color Theme
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="theme">Select Theme</Label>
-              <Select value={theme} onValueChange={handleThemeChange}>
-                <SelectTrigger id="theme">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {themeOptions.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Choose a color scheme that suits your preference. The theme will be applied across the entire app.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Type className="w-5 h-5" />
-              Font Size
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="fontSize">Select Font Size</Label>
-              <Select value={fontSize} onValueChange={handleFontSizeChange}>
-                <SelectTrigger id="fontSize">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {fontSizeOptions.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Adjust text size for better readability during quizzes.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <LogIn className="w-5 h-5" />
-              Administrator Access
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleAdminLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="adminUsername">Username</Label>
-                <Input
-                  id="adminUsername"
-                  type="text"
-                  placeholder="Enter admin username"
-                  value={adminUsername}
-                  onChange={(e) => setAdminUsername(e.target.value)}
-                  required
-                />
+        {!user && (
+          <Card className="mb-6 border-amber-200 bg-amber-50 dark:bg-amber-900/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 text-amber-900 dark:text-amber-100">
+                <LogIn className="h-5 w-5" />
+                <p className="font-medium">
+                  Please log in to access all settings and enable push notifications.
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="adminPassword">Password</Label>
-                <Input
-                  id="adminPassword"
-                  type="password"
-                  placeholder="Enter admin password"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full">
-                Login to Admin Panel
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
-        <Card>
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5" />
               Push Notifications
             </CardTitle>
             <CardDescription>
-              Receive notifications about new quiz sets, achievements, and leaderboard updates
+              Receive notifications about new quizzes, achievements, and updates
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="notifications">Enable Push Notifications</Label>
-                <p className="text-sm text-muted-foreground">
-                  Get notified about new content and updates
-                </p>
-              </div>
+              <Label htmlFor="notifications" className="flex-1">
+                Enable Push Notifications
+              </Label>
               <Switch
                 id="notifications"
-                checked={notificationsEnabled}
+                checked={settings.notifications}
                 onCheckedChange={handleNotificationToggle}
-                disabled={loadingNotifications || notificationPermission === "denied"}
+                disabled={!user || isSubscribing || notificationPermission === "denied"}
               />
             </div>
 
-            {notificationPermission === "denied" && (
-              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                <BellOff className="h-4 w-4 inline mr-2" />
+            {user && notificationPermission === "denied" && (
+              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
+                <BellOff className="inline h-4 w-4 mr-2" />
                 Notifications are blocked. Please enable them in your browser settings.
               </div>
             )}
 
-            {notificationsEnabled && (
+            {user && notificationPermission === "granted" && (
+              <div className="text-sm text-muted-foreground">
+                Permission Status: <span className="text-green-600 dark:text-green-400 font-medium">Granted</span>
+              </div>
+            )}
+
+            {user && isSubscribed && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleTestNotification}
+                onClick={handleSendTestNotification}
+                disabled={isSendingTest}
                 className="w-full"
               >
                 <TestTube className="h-4 w-4 mr-2" />
-                Send Test Notification
+                {isSendingTest ? "Sending..." : "Send Test Notification"}
               </Button>
             )}
+          </CardContent>
+        </Card>
 
-            <div className="text-xs text-muted-foreground">
-              <strong>Note:</strong> Notifications work best when the app is installed as a PWA.
-              Use the "Install" button at the bottom of the screen to install the app.
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Palette className="h-5 w-5" />
+              Appearance
+            </CardTitle>
+            <CardDescription>
+              Customize how the app looks and feels
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="theme">Theme</Label>
+              <select
+                id="theme"
+                className="w-full p-2 border rounded-md bg-white dark:bg-gray-800"
+                value={settings.theme}
+                onChange={(e) => handleSettingChange("theme", e.target.value)}
+              >
+                {themeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="fontSize" className="flex items-center gap-2">
+                <Type className="h-4 w-4" />
+                Font Size
+              </Label>
+              <select
+                id="fontSize"
+                className="w-full p-2 border rounded-md bg-white dark:bg-gray-800"
+                value={settings.fontSize}
+                onChange={(e) => handleSettingChange("fontSize", e.target.value)}
+              >
+                {fontSizeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Account</CardTitle>
+            <CardTitle>About</CardTitle>
+            <CardDescription>
+              Version 1.0.0 - The Ultimate Bible Quizzing Game
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <p className="text-sm">{user.email}</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Country</Label>
-              <p className="text-sm">{user.country}</p>
-            </div>
-            <Button variant="destructive" onClick={logout} className="w-full">
-              Logout
-            </Button>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Test your Bible knowledge with fun, engaging quizzes. Track your progress and compete with others on the leaderboard.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              © 2026 Bible Quiz. All rights reserved.
+            </p>
           </CardContent>
         </Card>
       </div>
