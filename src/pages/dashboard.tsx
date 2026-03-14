@@ -5,13 +5,24 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { BookOpen, Trophy, Target, Clock } from "lucide-react";
 import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
 
-  if (!user) {
-    router.push("/");
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !user) {
+      router.push("/");
+    }
+  }, [mounted, user, router]);
+
+  if (!mounted || !user) {
     return null;
   }
 

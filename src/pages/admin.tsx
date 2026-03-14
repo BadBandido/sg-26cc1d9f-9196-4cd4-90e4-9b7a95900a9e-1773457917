@@ -21,17 +21,25 @@ export default function AdminPage() {
   const [editingSet, setEditingSet] = useState<QuestionSet | null>(null);
   const [newSetTitle, setNewSetTitle] = useState("");
   const [newSetQuestions, setNewSetQuestions] = useState("");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !user) {
       router.push("/");
-      return;
     }
+  }, [mounted, user, router]);
 
-    setQuestionSets(generateQuestionSets());
-  }, [user, router]);
+  useEffect(() => {
+    if (mounted && user) {
+      setQuestionSets(generateQuestionSets());
+    }
+  }, [mounted, user]);
 
-  if (!user) {
+  if (!mounted || !user) {
     return null;
   }
 

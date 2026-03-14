@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,9 +16,19 @@ export default function SettingsPage() {
   const router = useRouter();
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
+  const [mounted, setMounted] = useState(false);
 
-  if (!user) {
-    router.push("/");
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !user) {
+      router.push("/");
+    }
+  }, [mounted, user, router]);
+
+  if (!mounted || !user) {
     return null;
   }
 
