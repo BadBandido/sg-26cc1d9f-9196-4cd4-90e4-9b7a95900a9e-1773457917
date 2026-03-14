@@ -7,9 +7,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useAuth } from "@/contexts/AuthContext";
 import { countries } from "@/lib/countries";
 import { BookOpen } from "lucide-react";
+import { useRouter } from "next/router";
 
 export function SplashScreen() {
   const { login } = useAuth();
+  const router = useRouter();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -68,6 +70,7 @@ export function SplashScreen() {
 
         // Auto-login after signup
         login(email, password);
+        router.push("/dashboard");
       } else {
         // Login mode
         const existingUsers = JSON.parse(localStorage.getItem("bible_quiz_users") || "[]");
@@ -80,6 +83,7 @@ export function SplashScreen() {
         }
 
         login(email, password);
+        router.push("/dashboard");
       }
     } catch (error) {
       console.error("Authentication failed:", error);
