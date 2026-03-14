@@ -159,7 +159,7 @@ export default function Settings() {
     setIsSendingTest(true);
 
     try {
-      await sendTestNotification(user.id);
+      await sendTestNotification();
       
       toast({
         title: "Test Notification Sent",
