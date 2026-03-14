@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { countries } from "@/lib/countries";
 import { BookOpen } from "lucide-react";
@@ -13,20 +13,77 @@ export function SplashScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [country, setCountry] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
-    
+
     const selectedCountry = countries.find(c => c.code === country);
-    if (!selectedCountry) return;
+    if (!selectedCountry) {
+      setError("Please select a country");
+      setLoading(false);
+      return;
+    }
 
     try {
-      await login(email, password, selectedCountry.name, selectedCountry.code);
+      if (!isLogin) {
+        // Sign Up mode
+        if (password !== confirmPassword) {
+          setError("Passwords do not match");
+          setLoading(false);
+          return;
+        }
+
+        if (password.length < 6) {
+          setError("Password must be at least 6 characters");
+          setLoading(false);
+          return;
+        }
+
+        // Check if user already exists
+        const existingUsers = JSON.parse(localStorage.getItem("bible_quiz_users") || "[]");
+        if (existingUsers.some((u: any) => u.email === email)) {
+          setError("An account with this email already exists");
+          setLoading(false);
+          return;
+        }
+
+        // Create new user
+        const newUser = {
+          id: Date.now().toString(),
+          email,
+          password, // In production, this should be hashed
+          country: selectedCountry.name,
+          countryCode: selectedCountry.code,
+          createdAt: new Date().toISOString(),
+        };
+
+        existingUsers.push(newUser);
+        localStorage.setItem("bible_quiz_users", JSON.stringify(existingUsers));
+
+        // Auto-login after signup
+        await login(email, password, selectedCountry.name, selectedCountry.code);
+      } else {
+        // Login mode
+        const existingUsers = JSON.parse(localStorage.getItem("bible_quiz_users") || "[]");
+        const user = existingUsers.find((u: any) => u.email === email && u.password === password);
+
+        if (!user) {
+          setError("Invalid email or password");
+          setLoading(false);
+          return;
+        }
+
+        await login(email, password, user.country, user.countryCode);
+      }
     } catch (error) {
-      console.error("Login failed:", error);
+      console.error("Authentication failed:", error);
+      setError("An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -44,6 +101,12 @@ export function SplashScreen() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
+                {error}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -65,8 +128,24 @@ export function SplashScreen() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
               />
             </div>
+
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="country">Country</Label>
@@ -91,15 +170,30 @@ export function SplashScreen() {
               {loading ? "Loading..." : isLogin ? "Login" : "Sign Up"}
             </Button>
 
-            <button
-              type="button"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
-              onClick={() => alert("Password reset functionality coming soon!")}
-            >
-              Forgot password?
-            </button>
+            {isLogin && (
+              <button
+                type="button"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
+                onClick={() => alert("Password reset functionality coming soon!")}
+              >
+                Forgot password?
+              </button>
+            )}
           </form>
         </CardContent>
+        <CardFooter className="flex justify-center">
+          <button
+            type="button"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setError("");
+              setConfirmPassword("");
+            }}
+          >
+            {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Login"}
+          </button>
+        </CardFooter>
       </Card>
     </div>
   );
