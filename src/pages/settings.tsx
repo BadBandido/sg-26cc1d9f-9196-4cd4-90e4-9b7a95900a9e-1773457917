@@ -1,70 +1,176 @@
 import { useState, useEffect } from "react";
-import { Layout } from "@/components/Layout";
-import { SEO } from "@/components/SEO";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Layout } from "@/components/Layout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/router";
-import type { ThemeColor, FontSize } from "@/types";
-import { Palette, Type, LogIn } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { 
+  subscribeToPushNotifications, 
+  unsubscribeFromPushNotifications, 
+  isSubscribedToPushNotifications,
+  requestNotificationPermission,
+  sendTestNotification 
+} from "@/services/notificationService";
+import { Bell, BellOff, TestTube } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
-export default function SettingsPage() {
-  const { user, settings, updateSettings, logout } = useAuth();
+export default function Settings() {
+  const { user, logout } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
+  const [fontSize, setFontSize] = useState("normal");
+  const [theme, setTheme] = useState("navy");
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
-  const [mounted, setMounted] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (mounted && !user) {
+    if (!user) {
       router.push("/");
+      return;
     }
-  }, [mounted, user, router]);
 
-  if (!mounted || !user) {
-    return null;
-  }
+    // Load saved settings
+    const savedFontSize = localStorage.getItem("fontSize") || "normal";
+    const savedTheme = localStorage.getItem("theme") || "navy";
+    setFontSize(savedFontSize);
+    setTheme(savedTheme);
 
-  const handleThemeChange = (theme: ThemeColor) => {
-    updateSettings({ theme });
+    // Apply theme
+    document.documentElement.setAttribute("data-theme", savedTheme);
+
+    // Check notification status
+    checkNotificationStatus();
+  }, [user, router]);
+
+  const checkNotificationStatus = async () => {
+    if ("Notification" in window) {
+      setNotificationPermission(Notification.permission);
+      const subscribed = await isSubscribedToPushNotifications();
+      setNotificationsEnabled(subscribed);
+    }
   };
 
-  const handleFontSizeChange = (fontSize: FontSize) => {
-    updateSettings({ fontSize });
-  };
-
-  const handleAdminLogin = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFontSizeChange = (value: string) => {
+    setFontSize(value);
+    localStorage.setItem("fontSize", value);
     
+    // Apply font size
+    const root = document.documentElement;
+    if (value === "small") {
+      root.style.fontSize = "14px";
+    } else if (value === "large") {
+      root.style.fontSize = "18px";
+    } else {
+      root.style.fontSize = "16px";
+    }
+
+    toast({
+      title: "Font Size Updated",
+      description: `Font size changed to ${value}`,
+    });
+  };
+
+  const handleThemeChange = (value: string) => {
+    setTheme(value);
+    localStorage.setItem("theme", value);
+    document.documentElement.setAttribute("data-theme", value);
+
+    toast({
+      title: "Theme Updated",
+      description: `Color theme changed to ${value}`,
+    });
+  };
+
+  const handleAdminLogin = () => {
     if (adminUsername === "Lexiboy" && adminPassword === "KingDavid1971") {
       router.push("/admin");
     } else {
-      alert("Invalid admin credentials");
+      toast({
+        title: "Invalid Credentials",
+        description: "Incorrect username or password",
+        variant: "destructive",
+      });
     }
   };
 
-  const themeOptions: { value: ThemeColor; label: string }[] = [
-    { value: "navy-blue", label: "Navy Blue Monochromatic" },
-    { value: "army-green", label: "Army Green Monochromatic" },
-    { value: "burgundy", label: "Burgundy Monochromatic" },
-    { value: "amaranth", label: "Amaranth Monochromatic" },
-    { value: "purple", label: "Purple Monochromatic" },
-    { value: "teal", label: "Teal Monochromatic" },
-    { value: "brown", label: "Brown Monochromatic" },
-  ];
+  const handleNotificationToggle = async (enabled: boolean) => {
+    setLoadingNotifications(true);
+    
+    try {
+      if (enabled) {
+        // Request permission first
+        const permission = await requestNotificationPermission();
+        setNotificationPermission(permission);
 
-  const fontSizeOptions: { value: FontSize; label: string }[] = [
-    { value: "small", label: "Small" },
-    { value: "normal", label: "Normal" },
-    { value: "large", label: "Large" },
-  ];
+        if (permission === "granted") {
+          const subscription = await subscribeToPushNotifications();
+          if (subscription) {
+            setNotificationsEnabled(true);
+            toast({
+              title: "Notifications Enabled",
+              description: "You will now receive push notifications",
+            });
+          } else {
+            throw new Error("Failed to subscribe");
+          }
+        } else {
+          toast({
+            title: "Permission Denied",
+            description: "Please enable notifications in your browser settings",
+            variant: "destructive",
+          });
+        }
+      } else {
+        const success = await unsubscribeFromPushNotifications();
+        if (success) {
+          setNotificationsEnabled(false);
+          toast({
+            title: "Notifications Disabled",
+            description: "You will no longer receive push notifications",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error toggling notifications:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update notification settings",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  const handleTestNotification = async () => {
+    try {
+      await sendTestNotification();
+      toast({
+        title: "Test Notification Sent",
+        description: "Check your notifications!",
+      });
+    } catch (error) {
+      console.error("Error sending test notification:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send test notification",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    router.push("/");
+  };
 
   return (
     <Layout>
@@ -86,7 +192,7 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="theme">Select Theme</Label>
-              <Select value={settings.theme} onValueChange={handleThemeChange}>
+              <Select value={theme} onValueChange={handleThemeChange}>
                 <SelectTrigger id="theme">
                   <SelectValue />
                 </SelectTrigger>
@@ -115,7 +221,7 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="fontSize">Select Font Size</Label>
-              <Select value={settings.fontSize} onValueChange={handleFontSizeChange}>
+              <Select value={fontSize} onValueChange={handleFontSizeChange}>
                 <SelectTrigger id="fontSize">
                   <SelectValue />
                 </SelectTrigger>
@@ -169,6 +275,58 @@ export default function SettingsPage() {
                 Login to Admin Panel
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Push Notifications
+            </CardTitle>
+            <CardDescription>
+              Receive notifications about new quiz sets, achievements, and leaderboard updates
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="notifications">Enable Push Notifications</Label>
+                <p className="text-sm text-muted-foreground">
+                  Get notified about new content and updates
+                </p>
+              </div>
+              <Switch
+                id="notifications"
+                checked={notificationsEnabled}
+                onCheckedChange={handleNotificationToggle}
+                disabled={loadingNotifications || notificationPermission === "denied"}
+              />
+            </div>
+
+            {notificationPermission === "denied" && (
+              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                <BellOff className="h-4 w-4 inline mr-2" />
+                Notifications are blocked. Please enable them in your browser settings.
+              </div>
+            )}
+
+            {notificationsEnabled && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTestNotification}
+                className="w-full"
+              >
+                <TestTube className="h-4 w-4 mr-2" />
+                Send Test Notification
+              </Button>
+            )}
+
+            <div className="text-xs text-muted-foreground">
+              <strong>Note:</strong> Notifications work best when the app is installed as a PWA.
+              Use the "Install" button at the bottom of the screen to install the app.
+            </div>
           </CardContent>
         </Card>
 
