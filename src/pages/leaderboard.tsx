@@ -14,12 +14,19 @@ import { Trophy, Medal, Award, Target } from "lucide-react";
 export default function LeaderboardPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [selectedSet, setSelectedSet] = useState<string>("all");
   const [perSetLeaderboard, setPerSetLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [accumulatedLeaderboard, setAccumulatedLeaderboard] = useState<GlobalLeaderboardEntry[]>([]);
   const questionSets = generateQuestionSets();
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
     if (!user) {
       router.push("/");
       return;
@@ -105,9 +112,9 @@ export default function LeaderboardPage() {
     });
 
     setAccumulatedLeaderboard(accumulatedEntries.slice(0, 100));
-  }, [user, router, selectedSet]);
+  }, [mounted, user, router, selectedSet]);
 
-  if (!user) {
+  if (!mounted || !user) {
     return null;
   }
 
