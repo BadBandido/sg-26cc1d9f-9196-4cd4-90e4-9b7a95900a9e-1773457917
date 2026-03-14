@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <!-- Background -->
+  <rect width="192" height="192" fill="#1e3a5f" rx="24"/>
+  
+  <!-- Bible Book -->
+  <g transform="translate(96, 96)">
+    <!-- Book Cover -->
+    <rect x="-45" y="-52" width="90" height="104" fill="#d4af37" rx="3"/>
+    
+    <!-- Book Spine Shadow -->
+    <rect x="-45" y="-52" width="8" height="104" fill="#b8941f" rx="3 0 0 3"/>
+    
+    <!-- Book Pages -->
+    <rect x="-41" y="-48" width="82" height="96" fill="#f5f5dc" rx="2"/>
+    
+    <!-- Cross Symbol -->
+    <g transform="translate(0, -8)">
+      <!-- Vertical bar -->
+      <rect x="-4.5" y="-22" width="9" height="44" fill="#1e3a5f" rx="1.5"/>
+      <!-- Horizontal bar -->
+      <rect x="-18" y="-11" width="36" height="9" fill="#1e3a5f" rx="1.5"/>
+    </g>
+    
+    <!-- Text: BQ -->
+    <text x="0" y="38" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#d4af37" text-anchor="middle">BQ</text>
+  </g>
+</svg>

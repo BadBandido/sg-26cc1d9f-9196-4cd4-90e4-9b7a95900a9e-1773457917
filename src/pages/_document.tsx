@@ -9,21 +9,20 @@ export default function Document() {
         <SEOElements />
         
         {/* PWA Meta Tags */}
-        <meta name="application-name" content="Bible Quiz Game" />
+        <meta name="application-name" content="Bible Quiz" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Bible Quiz" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#1e293b" />
-        
-        {/* Manifest */}
-        <link rel="manifest" href="/manifest.json" />
+        <meta name="msapplication-TileColor" content="#1e3a5f" />
+        <meta name="msapplication-tap-highlight" content="no" />
+        <meta name="theme-color" content="#1e3a5f" />
         
         {/* Icons */}
-        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+        <link rel="apple-touch-icon" href="/icon.svg" />
+        <link rel="manifest" href="/manifest.json" />
         
         {/*
           CRITICAL: DO NOT REMOVE THIS SCRIPT
