@@ -10,7 +10,7 @@ import { BookOpen } from "lucide-react";
 import { useRouter } from "next/router";
 
 export function SplashScreen() {
-  const { login } = useAuth();
+  const { login, signup } = useAuth();
   const router = useRouter();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -47,48 +47,32 @@ export function SplashScreen() {
           return;
         }
 
-        // Check if user already exists
-        const existingUsers = JSON.parse(localStorage.getItem("bible_quiz_users") || "[]");
-        if (existingUsers.some((u: any) => u.email === email)) {
+        const success = signup(email, password, selectedCountry.name, selectedCountry.code);
+        
+        if (!success) {
           setError("An account with this email already exists");
           setLoading(false);
           return;
         }
 
-        // Create new user
-        const newUser = {
-          id: Date.now().toString(),
-          email,
-          password, // In production, this should be hashed
-          country: selectedCountry.name,
-          countryCode: selectedCountry.code,
-          createdAt: new Date().toISOString(),
-        };
-
-        existingUsers.push(newUser);
-        localStorage.setItem("bible_quiz_users", JSON.stringify(existingUsers));
-
-        // Auto-login after signup
-        login(email, password);
+        // Successful signup - redirect to dashboard
         router.push("/dashboard");
       } else {
         // Login mode
-        const existingUsers = JSON.parse(localStorage.getItem("bible_quiz_users") || "[]");
-        const user = existingUsers.find((u: any) => u.email === email && u.password === password);
+        const success = login(email, password);
 
-        if (!user) {
+        if (!success) {
           setError("Invalid email or password");
           setLoading(false);
           return;
         }
 
-        login(email, password);
+        // Successful login - redirect to dashboard
         router.push("/dashboard");
       }
     } catch (error) {
       console.error("Authentication failed:", error);
       setError("An error occurred. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
