@@ -1,13 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import type { User, UserSettings, FontSize, ThemeColor } from "@/types";
+import type { User, UserSettings } from "@/types";
 
 interface AuthContextType {
   user: User | null;
   settings: UserSettings;
-  login: (email: string, password: string, country: string, countryCode: string) => Promise<void>;
+  login: (email: string, password: string) => boolean;
+  signup: (email: string, password: string, country: string, countryCode: string) => boolean;
   logout: () => void;
-  isAuthenticated: boolean;
-  updateSettings: (settings: Partial<UserSettings>) => void;
+  updateSettings: (newSettings: Partial<UserSettings>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -15,45 +15,70 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [settings, setSettings] = useState<UserSettings>({
-    userId: "",
     theme: "navy-blue",
     fontSize: "normal",
   });
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("bible-quiz-user");
-    const savedSettings = localStorage.getItem("bible-quiz-settings");
+    const storedUser = localStorage.getItem("bible-quiz-user");
+    const storedSettings = localStorage.getItem("bible-quiz-settings");
     
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
     }
-    
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
+    if (storedSettings) {
+      const parsedSettings = JSON.parse(storedSettings);
+      setSettings(parsedSettings);
+      applyTheme(parsedSettings.theme);
+      applyFontSize(parsedSettings.fontSize);
     }
   }, []);
 
-  useEffect(() => {
-    const themeClass = `theme-${settings.theme}`;
-    document.documentElement.className = themeClass;
-    
-    document.body.className = `font-size-${settings.fontSize}`;
-  }, [settings.theme, settings.fontSize]);
+  const applyTheme = (theme: string) => {
+    document.documentElement.className = "";
+    if (theme !== "navy-blue") {
+      document.documentElement.classList.add(`theme-${theme}`);
+    }
+  };
 
-  const login = async (email: string, password: string, country: string, countryCode: string) => {
+  const applyFontSize = (fontSize: string) => {
+    document.documentElement.classList.remove("font-size-small", "font-size-normal", "font-size-large");
+    document.documentElement.classList.add(`font-size-${fontSize}`);
+  };
+
+  const login = (email: string, password: string): boolean => {
+    const users = JSON.parse(localStorage.getItem("bible-quiz-users") || "[]");
+    const foundUser = users.find((u: User) => u.email === email && u.password === password);
+    
+    if (foundUser) {
+      setUser(foundUser);
+      localStorage.setItem("bible-quiz-user", JSON.stringify(foundUser));
+      return true;
+    }
+    return false;
+  };
+
+  const signup = (email: string, password: string, country: string, countryCode: string): boolean => {
+    const users = JSON.parse(localStorage.getItem("bible-quiz-users") || "[]");
+    
+    if (users.some((u: User) => u.email === email)) {
+      return false;
+    }
+
     const newUser: User = {
       id: Date.now().toString(),
       email,
+      password,
       country,
       countryCode,
       createdAt: new Date().toISOString(),
-      isAdmin: email === "admin@biblebowl.com",
     };
 
+    users.push(newUser);
+    localStorage.setItem("bible-quiz-users", JSON.stringify(users));
     setUser(newUser);
-    setSettings(prev => ({ ...prev, userId: newUser.id }));
-    
     localStorage.setItem("bible-quiz-user", JSON.stringify(newUser));
+    return true;
   };
 
   const logout = () => {
@@ -65,19 +90,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
     localStorage.setItem("bible-quiz-settings", JSON.stringify(updated));
+    
+    if (newSettings.theme) {
+      applyTheme(newSettings.theme);
+    }
+    if (newSettings.fontSize) {
+      applyFontSize(newSettings.fontSize);
+    }
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        settings,
-        login,
-        logout,
-        isAuthenticated: !!user,
-        updateSettings,
-      }}
-    >
+    <AuthContext.Provider value={{ user, settings, login, signup, logout, updateSettings }}>
       {children}
     </AuthContext.Provider>
   );
