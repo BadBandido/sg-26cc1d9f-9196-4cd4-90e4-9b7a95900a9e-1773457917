@@ -29,7 +29,7 @@ const fontSizeOptions = [
 ];
 
 export default function Settings() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
   const [settings, setSettings] = useState({
@@ -107,7 +107,7 @@ export default function Settings() {
           return;
         }
 
-        await subscribeToPushNotifications(user.id);
+        await subscribeToPushNotifications();
         setIsSubscribed(true);
         handleSettingChange("notifications", true);
         
@@ -116,7 +116,7 @@ export default function Settings() {
           description: "You will now receive push notifications.",
         });
       } else {
-        await unsubscribeFromPushNotifications(user.id);
+        await unsubscribeFromPushNotifications();
         setIsSubscribed(false);
         handleSettingChange("notifications", false);
         
